@@ -1,0 +1,8 @@
+{
+  "name": "Find Your Tribe",
+  "description": "A mobile-friendly quiz app to discover what you could talk about for hours.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
