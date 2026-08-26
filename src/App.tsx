@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from './firebase';
 import { questions, personalities, type Category } from './data';
 import { Dashboard } from './components/Dashboard';
 
@@ -97,11 +99,11 @@ export default function App() {
 
     setResultCategory(winner);
 
-    // Save to backend asynchronously
-    fetch('/api/results', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ personality: winner, employee_code: employeeCode.trim() })
+    // Save to Firestore asynchronously
+    addDoc(collection(db, 'quiz_results'), {
+      personality: winner,
+      employee_code: employeeCode.trim(),
+      created_at: serverTimestamp()
     }).catch(err => console.error("Failed to save result:", err));
 
     setTimeout(() => {

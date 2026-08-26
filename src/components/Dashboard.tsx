@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { personalities, type Category } from '../data';
 import { Users, BarChart3, Clock } from 'lucide-react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface ResultRecord {
   id: string;
@@ -14,16 +16,27 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/results')
-      .then(res => res.json())
-      .then(data => {
-        setResults(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load results", err);
-        setLoading(false);
+    const q = query(collection(db, 'quiz_results'), orderBy('created_at', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: ResultRecord[] = [];
+      snapshot.forEach((doc) => {
+        const docData = doc.data();
+        data.push({
+          id: doc.id,
+          employee_code: docData.employee_code,
+          personality: docData.personality,
+          // Firestore timestamp to ISO string for rendering
+          created_at: docData.created_at?.toDate().toISOString() || new Date().toISOString()
+        });
       });
+      setResults(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Failed to load results", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
@@ -75,7 +88,7 @@ export function Dashboard() {
                   </td>
                 </tr>
               ) : (
-                results.slice().reverse().map((record) => (
+                results.map((record) => (
                   <tr key={record.id} className="hover:bg-white/5 transition-colors">
                     <td className="px-6 py-4 font-mono font-medium">{record.employee_code}</td>
                     <td className="px-6 py-4 flex items-center">

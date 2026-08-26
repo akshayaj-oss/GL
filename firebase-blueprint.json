@@ -1,0 +1,20 @@
+{
+  "schema": {
+    "quiz_results": {
+      "description": "Stores user quiz results and personality outcomes",
+      "fields": {
+        "employee_code": "string",
+        "personality": "string",
+        "created_at": "timestamp"
+      }
+    }
+  },
+  "rules": {
+    "quiz_results": {
+      "read": "true",
+      "create": "true",
+      "update": "false",
+      "delete": "false"
+    }
+  }
+}
