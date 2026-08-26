@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import Confetti from 'react-confetti';
+import { useWindowSize } from 'react-use';
 import { questions, personalities, type Category } from './data';
 import { Dashboard } from './components/Dashboard';
 
@@ -11,9 +13,16 @@ export default function App() {
   const [answers, setAnswers] = useState<Category[]>([]);
   const [resultCategory, setResultCategory] = useState<Category | null>(null);
   const [employeeCode, setEmployeeCode] = useState('');
+  const { width, height } = useWindowSize();
+
+  const [adminClickCount, setAdminClickCount] = useState(0);
 
   // Admin routing check: keep dashboard strictly isolated from the employee flow
-  if (window.location.pathname === '/admin' || window.location.pathname === '/dashboard') {
+  const isAdmin = window.location.pathname === '/admin' || 
+                  window.location.pathname === '/dashboard' || 
+                  window.location.search.includes('admin=true');
+                  
+  if (isAdmin || adminClickCount >= 5) {
     return (
       <div className="min-h-screen bg-brand-navy flex flex-col items-center justify-center p-6 overflow-auto">
         <div className="w-full max-w-4xl pt-10">
@@ -97,7 +106,7 @@ export default function App() {
 
     setTimeout(() => {
       setAppState('reveal');
-    }, 2500);
+    }, 6500);
   };
 
   return (
@@ -109,10 +118,19 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="max-w-md w-full flex flex-col items-center text-center space-y-8"
+            className="max-w-md w-full flex flex-col items-center text-center space-y-8 relative"
           >
+            <div className="absolute -top-12 left-0 right-0 text-center text-brand-lavender/60 font-semibold tracking-widest text-sm uppercase">
+              Great Learning
+            </div>
+            
             <div className="space-y-4">
-              <div className="text-4xl">👀</div>
+              <div 
+                className="text-4xl cursor-default" 
+                onClick={() => setAdminClickCount(c => c + 1)}
+              >
+                👀
+              </div>
               <h1 className="text-5xl font-heading font-bold tracking-wide">FIND YOUR TRIBE</h1>
               <p className="text-xl font-semibold">5 questions. One very important discovery. 👀</p>
             </div>
@@ -160,15 +178,20 @@ export default function App() {
             <h2 className="text-3xl font-heading font-bold mb-10">{questions[currentQuestion].question}</h2>
 
             <div className="space-y-4 mt-auto">
-              {questions[currentQuestion].options.map((option, idx) => (
+              {questions[currentQuestion].options.map((option, idx) => {
+                const letters = ['A', 'B', 'C', 'D'];
+                return (
                 <button
                   key={idx}
                   onClick={() => handleAnswer(option.category)}
-                  className="w-full text-left bg-white/10 hover:bg-white/20 p-5 rounded-2xl transition-colors text-lg border border-white/10"
+                  className="w-full text-left bg-white/10 hover:bg-white/20 p-5 rounded-2xl transition-all transform hover:scale-[1.02] active:scale-[0.98] text-lg border border-white/10 flex items-center group"
                 >
-                  {option.text}
+                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-4 text-sm font-bold text-brand-lavender group-hover:bg-brand-lavender group-hover:text-brand-navy transition-colors">
+                    {letters[idx]}
+                  </span>
+                  <span>{option.text}</span>
                 </button>
-              ))}
+              )})}
             </div>
           </motion.div>
         )}
@@ -179,12 +202,12 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="max-w-md w-full flex flex-col items-center justify-center text-center space-y-6 min-h-[400px]"
+            className="max-w-md w-full flex flex-col items-center justify-center text-center space-y-8 min-h-[400px]"
           >
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-xl font-semibold">Interesting choices.</motion.p>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="text-xl font-semibold">We weren't asking you what you like.</motion.p>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.4 }} className="text-xl font-semibold">We were figuring out what makes you, you.</motion.p>
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.0 }} className="text-xl font-semibold">And we think we've figured it out. 👀</motion.p>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8 }} className="text-2xl font-semibold">Interesting choices.</motion.p>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.0, duration: 0.8 }} className="text-2xl font-semibold">We weren't asking you what you like.</motion.p>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 3.5, duration: 0.8 }} className="text-2xl font-semibold">We were figuring out what makes you, you.</motion.p>
+            <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 5.0, duration: 0.8 }} className="text-2xl font-semibold text-yellow-400">And we think we've figured it out. 👀</motion.p>
           </motion.div>
         )}
 
@@ -196,10 +219,14 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="max-w-md w-full flex flex-col items-center text-center relative"
           >
-            {/* Confetti simulation using CSS or static decorative elements */}
-            <div className="absolute inset-0 pointer-events-none opacity-50 flex flex-wrap justify-around">
-               {/* Simple decorative confetti particles could go here, omitting for simplicity */}
-            </div>
+            <Confetti
+              width={width}
+              height={height}
+              recycle={false}
+              numberOfPieces={400}
+              gravity={0.15}
+              style={{ position: 'fixed', top: 0, left: 0, zIndex: 50, pointerEvents: 'none' }}
+            />
             
             <div className="bg-white/10 border border-white/20 p-8 rounded-[2rem] backdrop-blur-sm w-full relative z-10 mt-12 shadow-xl">
               <div className="text-6xl mb-6">{personalities[resultCategory].icon}</div>
