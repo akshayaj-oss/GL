@@ -7,7 +7,21 @@ import { db } from './firebase';
 import { questions, personalities, type Category } from './data';
 import { Dashboard } from './components/Dashboard';
 
-export type AppState = 'landing' | 'quiz' | 'transition' | 'reveal';
+import { RadarBackground } from './components/RadarBackground';
+import { TribeMeter } from './components/TribeMeter';
+import { 
+  playAmbientLoad, 
+  playClick, 
+  playTick, 
+  playTransition, 
+  playAnticipation, 
+  playReveal,
+  toggleMute,
+  getIsMuted
+} from './utils/audio';
+import { Volume2, VolumeX } from 'lucide-react';
+
+export type AppState = 'landing' | 'loading_emojis' | 'quiz' | 'transition' | 'reveal';
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('landing');
@@ -15,9 +29,21 @@ export default function App() {
   const [answers, setAnswers] = useState<Category[]>([]);
   const [resultCategory, setResultCategory] = useState<Category | null>(null);
   const [employeeCode, setEmployeeCode] = useState('');
+  const [miniReaction, setMiniReaction] = useState<string | null>(null);
+  const [muted, setMuted] = useState(false);
   const { width, height } = useWindowSize();
 
   const [adminClickCount, setAdminClickCount] = useState(0);
+
+  useEffect(() => {
+    if (appState === 'landing') {
+      playAmbientLoad();
+    }
+  }, [appState]);
+
+  const handleToggleMute = () => {
+    setMuted(toggleMute());
+  };
 
   // Admin routing check: keep dashboard strictly isolated from the employee flow
   const isAdmin = window.location.pathname === '/admin' || 
@@ -36,18 +62,38 @@ export default function App() {
 
   const handleStart = () => {
     if (!employeeCode.trim()) return;
-    setAppState('quiz');
+    playClick();
+    setAppState('loading_emojis');
+    
+    setTimeout(() => {
+      setAppState('quiz');
+      playTick();
+    }, 2500);
   };
 
   const handleAnswer = (category: Category) => {
+    if (miniReaction) return; // Prevent double clicks
+    
+    playClick();
     const newAnswers = [...answers, category];
     setAnswers(newAnswers);
 
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(curr => curr + 1);
-    } else {
-      calculateResult(newAnswers);
-    }
+    const reactions = ["Hmm.", "Interesting.", "Noted.", "Okay...", "That's telling.", "Now we're getting somewhere.", "Got it."];
+    const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+    
+    setMiniReaction(reaction);
+    
+    setTimeout(() => {
+      playTransition();
+      setMiniReaction(null);
+      
+      if (currentQuestion < questions.length - 1) {
+        setCurrentQuestion(curr => curr + 1);
+        playTick();
+      } else {
+        calculateResult(newAnswers);
+      }
+    }, 1200);
   };
 
   const calculateResult = (finalAnswers: Category[]) => {
@@ -106,21 +152,34 @@ export default function App() {
       created_at: serverTimestamp()
     }).catch(err => console.error("Failed to save result:", err));
 
+    playAnticipation();
+
     setTimeout(() => {
       setAppState('reveal');
+      playReveal();
     }, 6500);
   };
 
   return (
-    <div className="min-h-screen bg-brand-navy flex flex-col items-center justify-center p-6 overflow-hidden">
+    <div className="min-h-screen bg-brand-navy flex flex-col items-center justify-center p-6 overflow-hidden relative">
+      <button 
+        onClick={handleToggleMute} 
+        className="fixed top-6 right-6 z-50 text-brand-lavender/50 hover:text-brand-lavender transition-colors"
+      >
+        {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+      </button>
+
+      <RadarBackground />
+
       <AnimatePresence mode="wait">
         {appState === 'landing' && (
           <motion.div 
             key="landing"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="max-w-md w-full flex flex-col items-center text-center space-y-8 relative"
+            exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="max-w-md w-full flex flex-col items-center text-center space-y-8 relative z-10"
           >
             <div className="absolute -top-12 left-0 right-0 text-center text-brand-lavender/60 font-semibold tracking-widest text-sm uppercase">
               Great Learning
@@ -157,43 +216,76 @@ export default function App() {
           </motion.div>
         )}
 
+        {appState === 'loading_emojis' && (
+          <motion.div
+            key="loading_emojis"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.5 }}
+            className="max-w-md w-full flex flex-col items-center justify-center space-y-12 z-10"
+          >
+            <div className="flex space-x-8 text-6xl">
+              <motion.div animate={{ y: [0, -20, 0] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0, ease: "easeInOut" }}>📖</motion.div>
+              <motion.div animate={{ y: [0, -20, 0] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.15, ease: "easeInOut" }}>🍔</motion.div>
+              <motion.div animate={{ y: [0, -20, 0] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.3, ease: "easeInOut" }}>📷</motion.div>
+              <motion.div animate={{ y: [0, -20, 0] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.45, ease: "easeInOut" }}>⚽</motion.div>
+            </div>
+          </motion.div>
+        )}
+
         {appState === 'quiz' && (
           <motion.div
             key={`quiz-${currentQuestion}`}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.3 }}
-            className="max-w-md w-full flex flex-col h-full py-8"
+            initial={{ opacity: 0, scale: 0.95, filter: 'blur(5px)' }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 1.05, filter: 'blur(5px)' }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="max-w-md w-full flex flex-col h-full py-8 relative z-10"
           >
-            <div className="flex items-center space-x-4 mb-8">
-              <span className="font-bold">{currentQuestion + 1}/5</span>
-              <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
-                <motion.div 
-                  className="h-full bg-brand-lavender"
-                  initial={{ width: `${((currentQuestion) / 5) * 100}%` }}
-                  animate={{ width: `${((currentQuestion + 1) / 5) * 100}%` }}
-                />
+            <TribeMeter current={currentQuestion} total={5} />
+
+            <div className="relative">
+              <AnimatePresence>
+                {miniReaction && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 1.1 }}
+                    className="absolute inset-0 z-20 flex items-center justify-center bg-brand-navy/90 backdrop-blur-sm rounded-3xl border border-brand-lavender/20"
+                  >
+                    <p className="font-mono text-brand-lavender tracking-widest uppercase">{miniReaction}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <h2 className="text-3xl font-heading font-bold mb-10 text-center relative z-10 drop-shadow-md">
+                {questions[currentQuestion].question}
+              </h2>
+
+              <div className="space-y-4 relative z-10">
+                {questions[currentQuestion].options.map((option, idx) => {
+                  const letters = ['A', 'B', 'C', 'D'];
+                  const isSelected = answers.length > currentQuestion && answers[currentQuestion] === option.category;
+                  return (
+                  <button
+                    key={idx}
+                    onClick={() => handleAnswer(option.category)}
+                    disabled={miniReaction !== null}
+                    className={`w-full text-left p-5 rounded-2xl transition-all duration-300 transform flex items-center group
+                      ${isSelected ? 'bg-brand-lavender/20 border-brand-lavender scale-[1.02] shadow-[0_0_15px_rgba(230,230,250,0.2)]' : 'bg-white/5 border-white/10 hover:bg-white/10 hover:scale-[1.01]'}
+                      border
+                    `}
+                  >
+                    <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center mr-4 text-sm font-bold transition-colors
+                      ${isSelected ? 'bg-brand-lavender text-brand-navy' : 'bg-white/10 text-brand-lavender group-hover:bg-brand-lavender/50'}
+                    `}>
+                      {letters[idx]}
+                    </span>
+                    <span className={isSelected ? 'text-white font-semibold' : 'text-white/80'}>{option.text}</span>
+                  </button>
+                )})}
               </div>
-            </div>
-
-            <h2 className="text-3xl font-heading font-bold mb-10">{questions[currentQuestion].question}</h2>
-
-            <div className="space-y-4 mt-auto">
-              {questions[currentQuestion].options.map((option, idx) => {
-                const letters = ['A', 'B', 'C', 'D'];
-                return (
-                <button
-                  key={idx}
-                  onClick={() => handleAnswer(option.category)}
-                  className="w-full text-left bg-white/10 hover:bg-white/20 p-5 rounded-2xl transition-all transform hover:scale-[1.02] active:scale-[0.98] text-lg border border-white/10 flex items-center group"
-                >
-                  <span className="flex-shrink-0 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-4 text-sm font-bold text-brand-lavender group-hover:bg-brand-lavender group-hover:text-brand-navy transition-colors">
-                    {letters[idx]}
-                  </span>
-                  <span>{option.text}</span>
-                </button>
-              )})}
             </div>
           </motion.div>
         )}
@@ -201,10 +293,11 @@ export default function App() {
         {appState === 'transition' && (
           <motion.div
             key="transition"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-md w-full flex flex-col items-center justify-center text-center space-y-8 min-h-[400px]"
+            initial={{ opacity: 0, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+            transition={{ duration: 1 }}
+            className="max-w-md w-full flex flex-col items-center justify-center text-center space-y-8 min-h-[400px] relative z-10"
           >
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5, duration: 0.8 }} className="text-2xl font-semibold">Interesting choices.</motion.p>
             <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 2.0, duration: 0.8 }} className="text-2xl font-semibold">We weren't asking you what you like.</motion.p>
@@ -218,8 +311,9 @@ export default function App() {
             key="reveal"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="max-w-md w-full flex flex-col items-center text-center relative"
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 1, ease: "easeOut" }}
+            className="max-w-md w-full flex flex-col items-center text-center relative z-20"
           >
             <Confetti
               width={width}
