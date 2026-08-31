@@ -4,5 +4,8 @@ service cloud.firestore {
     match /quiz_results/{document=**} {
       allow read, write: if true;
     }
+    match /quiz_results_v2/{document=**} {
+      allow read, write: if true;
+    }
   }
 }

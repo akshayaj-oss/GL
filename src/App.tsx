@@ -146,7 +146,7 @@ export default function App() {
     setResultCategory(winner);
 
     // Save to Firestore asynchronously
-    addDoc(collection(db, 'quiz_results'), {
+    addDoc(collection(db, 'quiz_results_v2'), {
       personality: winner,
       employee_code: employeeCode.trim(),
       created_at: serverTimestamp()
@@ -333,12 +333,12 @@ export default function App() {
                 {personalities[resultCategory].subtitle}
               </p>
               <p className="text-xl font-bold text-yellow-400">
-                Vibe: "{personalities[resultCategory].vibe}"
+                Your Vibe: "{personalities[resultCategory].vibe}"
               </p>
             </div>
 
             <p className="mt-10 text-lg font-semibold">
-              Your tribe goes live on VIBE on 1st September 👀
+              Your tribe goes live on VIBE on 2nd September 👀
             </p>
           </motion.div>
         )}

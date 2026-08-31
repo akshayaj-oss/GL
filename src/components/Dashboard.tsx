@@ -16,7 +16,7 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'quiz_results'), orderBy('created_at', 'desc'));
+    const q = query(collection(db, 'quiz_results_v2'), orderBy('created_at', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data: ResultRecord[] = [];
       snapshot.forEach((doc) => {
